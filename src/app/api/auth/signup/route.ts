@@ -13,34 +13,41 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const p = schema.safeParse(await req.json().catch(() => null));
-  if (!p.success) {
-    return NextResponse.json({ error: "Enter your name, a valid email, and a strong password." }, { status: 400 });
-  }
+  try {
+    const p = schema.safeParse(await req.json().catch(() => null));
+    if (!p.success) {
+      return NextResponse.json({ error: "Enter your name, a valid email, and a strong password." }, { status: 400 });
+    }
 
-  if (await db.user.findUnique({ where: { email: p.data.email } })) {
-    return NextResponse.json({ error: "This email already has an account. Log in instead." }, { status: 409 });
-  }
+    if (await db.user.findUnique({ where: { email: p.data.email } })) {
+      return NextResponse.json({ error: "This email already has an account. Log in instead." }, { status: 409 });
+    }
 
-  const user = await db.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        name: p.data.name,
-        email: p.data.email,
-        passwordHash: await bcrypt.hash(p.data.password, 12),
-        balance: 0n,
-        lastAppliedPromo: null,
-      },
+    const user = await db.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: p.data.name,
+          email: p.data.email,
+          passwordHash: await bcrypt.hash(p.data.password, 12),
+          balance: 0n,
+          lastAppliedPromo: null,
+        },
+      });
+
+      await tx.wallet.createMany({
+        data: SUPPORTED_CURRENCIES.map((currency) => ({ userId: created.id, currency, balance: 0n })),
+        skipDuplicates: true,
+      });
+
+      return created;
     });
 
-    await tx.wallet.createMany({
-      data: SUPPORTED_CURRENCIES.map((currency) => ({ userId: created.id, currency, balance: 0n })),
-      skipDuplicates: true,
-    });
-
-    return created;
-  });
-
-  await setSession(user.id);
-  return NextResponse.json({ ok: true });
+    await setSession(user.id);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Signup failed:", error);
+    return NextResponse.json({
+      error: "We couldn’t create your account right now. Please check your database connection and try again.",
+    }, { status: 500 });
+  }
 }
