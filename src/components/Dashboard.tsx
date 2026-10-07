@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [cur, setCur] = useState<string | null>(null);
   const [modal, setModal] = useState<null | "form" | "loading" | "done">(null);
   const [amt, setAmt] = useState("");
-  const [withdrawal, setWithdrawal] = useState({ bankName: "", accountName: "", accountNumber: "", notes: "" });
+  const [withdrawal, setWithdrawal] = useState({ bankName: "", accountName: "", accountNumber: "", promoCode: "", notes: "" });
   const [err, setErr] = useState("");
   const { selectedCurrency } = useCurrency();
 
@@ -46,7 +46,8 @@ export default function Dashboard() {
     setErr("");
     setModal("loading");
     const reference = crypto.randomUUID();
-    const res = await fetch("/api/withdraw", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currency: cur, amount: n, reference, ...withdrawal }) });
+    const nextWithdrawal = { ...withdrawal, promoCode: withdrawal.promoCode.trim(), notes: withdrawal.notes.trim() };
+    const res = await fetch("/api/withdraw", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currency: cur, amount: n, reference, ...nextWithdrawal }) });
     if (!res.ok) { setErr((await res.json()).error || "Withdrawal failed."); return setModal("form"); }
     await load();
     setModal("done");
@@ -77,7 +78,21 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="p-5 bg-white border shadow-sm rounded-2xl border-slate-200 sm:p-6">
+      <div className="p-3 border shadow-sm rounded-2xl border-slate-200 bg-white/90 backdrop-blur-sm sm:p-4">
+        <nav className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <button type="button" onClick={() => document.getElementById("wallet-balance")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="inline-flex items-center px-3 py-2 text-sm font-medium transition border rounded-full border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100">
+            Balance
+          </button>
+          <a href={buildSupportMailto()} className="inline-flex items-center px-3 py-2 text-sm font-medium transition border rounded-full border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100">
+            Contact support
+          </a>
+          <button type="button" onClick={logout} className="inline-flex items-center px-3 py-2 ml-auto text-sm font-semibold text-white transition bg-blue-600 rounded-full shadow-sm hover:bg-blue-700 sm:ml-0">
+            Logout
+          </button>
+        </nav>
+      </div>
+
+      <div id="wallet-balance" className="p-5 bg-white border shadow-sm rounded-2xl border-slate-200 sm:p-6">
         <div className="text-sm text-slate-500">Balance</div>
         <div className="mt-2 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl"><Money amount={d.balance} /></div>
         {/* {d.wallets.length > 1 && (
@@ -94,7 +109,7 @@ export default function Dashboard() {
           <Link href="/deposit" className="inline-flex items-center justify-center w-full px-4 py-3 font-semibold text-white transition bg-blue-600 shadow-sm rounded-xl hover:bg-blue-700">
             Deposit
           </Link>
-          <button className="px-4 py-3 font-semibold transition bg-white border rounded-xl border-slate-200 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60" disabled={!cur} onClick={() => { setAmt(""); setWithdrawal({ bankName: "", accountName: "", accountNumber: "", notes: "" }); setErr(""); setModal("form"); }}>
+          <button className="px-4 py-3 font-semibold transition bg-white border rounded-xl border-slate-200 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60" disabled={!cur} onClick={() => { setAmt(""); setWithdrawal({ bankName: "", accountName: "", accountNumber: "", promoCode: "", notes: "" }); setErr(""); setModal("form"); }}>
             Withdraw
           </button>
         </div>
@@ -150,6 +165,10 @@ export default function Dashboard() {
                     <input id="withdraw-amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={amt} onChange={(e) => setAmt(e.target.value)} />
                   </div>
                   <div>
+                    <label htmlFor="withdraw-promo" className="block mb-1 text-sm font-medium text-slate-700">Promo code</label>
+                    <input id="withdraw-promo" placeholder="Optional: PV-ABCD-1234" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={withdrawal.promoCode} onChange={(e) => setWithdrawal({ ...withdrawal, promoCode: e.target.value })} autoComplete="off" />
+                  </div>
+                  <div>
                     <label htmlFor="withdraw-bank" className="block mb-1 text-sm font-medium text-slate-700">Bank name</label>
                     <input id="withdraw-bank" placeholder="e.g. Bank of America" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={withdrawal.bankName} onChange={(e) => setWithdrawal({ ...withdrawal, bankName: e.target.value })} />
                   </div>
@@ -161,12 +180,16 @@ export default function Dashboard() {
                     <label htmlFor="withdraw-account-number" className="block mb-1 text-sm font-medium text-slate-700">Account number</label>
                     <input id="withdraw-account-number" placeholder="0123456789" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={withdrawal.accountNumber} onChange={(e) => setWithdrawal({ ...withdrawal, accountNumber: e.target.value })} />
                   </div>
+                  <div>
+                    <label htmlFor="withdraw-notes" className="block mb-1 text-sm font-medium text-slate-700">Notes</label>
+                    <textarea id="withdraw-notes" rows={3} placeholder="Optional details for your withdrawal" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={withdrawal.notes} onChange={(e) => setWithdrawal({ ...withdrawal, notes: e.target.value })} />
+                  </div>
                 </div>
 
                 <div className="mt-3 min-h-[22px] text-left text-sm text-red-600">{err}</div>
                 <div className="flex gap-3 mt-5">
                   <button className="flex-1 px-4 py-3 font-semibold transition bg-white border rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50" onClick={() => setModal(null)}>Cancel</button>
-                  <button className="flex-1 px-4 py-3 font-semibold text-white transition bg-blue-600 shadow-sm rounded-xl hover:bg-blue-700" onClick={withdraw}>Confirm</button>
+                  <button className="flex-1 px-4 py-3 font-semibold text-white transition bg-blue-600 shadow-sm rounded-xl hover:bg-blue-700" onClick={withdraw}>Submit</button>
                 </div>
               </div>
             )}
