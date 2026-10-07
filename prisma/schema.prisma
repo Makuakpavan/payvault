@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum TxType {
+  DEPOSIT
+  WITHDRAWAL
+  BONUS
+  ADJUSTMENT
+}
+
+enum TxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PromoBonusMode {
+  SET_TO_100
+  ADD_100
+}
+
+model User {
+  id                String             @id @default(cuid())
+  email             String             @unique
+  name              String
+  passwordHash      String
+  role              Role               @default(USER)
+  status            UserStatus         @default(ACTIVE)
+  balance           BigInt             @default(0)
+  createdAt         DateTime           @default(now())
+  promoCodeId       String?
+  lastAppliedPromo  String?
+  country           String?
+  phone             String?
+  promoCode         PromoCode?         @relation("UserPromoCode", fields: [promoCodeId], references: [id])
+  wallets           Wallet[]
+  transactions      Transaction[]
+  createdPromoCodes PromoCode[]        @relation("CreatedPromoCodes")
+  redemptions       PromoRedemption[]
+  adminAdjustments  AdminAdjustment[] @relation("AdminAdjustmentsUser")
+  performedAdjustments AdminAdjustment[] @relation("AdminAdjustmentsAdmin")
+  currencyRateReads CurrencyRate[]
+}
+
+model Wallet {
+  id       String @id @default(cuid())
+  userId   String
+  currency String
+  balance  BigInt @default(0)
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, currency])
+}
+
+model PromoCode {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  createdById    String
+  createdAt      DateTime        @default(now())
+  expiresAt      DateTime?
+  usageLimit     Int?
+  usageCount     Int             @default(0)
+  isSingleUse    Boolean         @default(true)
+  isActive       Boolean         @default(true)
+  bonusAmount    BigInt          @default(10000)
+  bonusMode      PromoBonusMode  @default(SET_TO_100)
+  note           String?
+  createdBy      User            @relation("CreatedPromoCodes", fields: [createdById], references: [id])
+  redemptions    PromoRedemption[]
+  users          User[]          @relation("UserPromoCode")
+
+  @@index([code])
+}
+
+model PromoRedemption {
+  id            String    @id @default(cuid())
+  userId        String
+  promoCodeId   String
+  bonusAmount   BigInt    @default(0)
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id])
+  promoCode     PromoCode @relation(fields: [promoCodeId], references: [id])
+
+  @@unique([userId, promoCodeId])
+  @@index([userId, createdAt])
+}
+
+model AdminAdjustment {
+  id              String   @id @default(cuid())
+  adminId         String
+  userId          String
+  amount          BigInt
+  originalCurrency String
+  direction       String
+  reason          String?
+  createdAt       DateTime @default(now())
+  admin           User     @relation("AdminAdjustmentsAdmin", fields: [adminId], references: [id])
+  user            User     @relation("AdminAdjustmentsUser", fields: [userId], references: [id])
+}
+
+model CurrencyRate {
+  id         String   @id @default(cuid())
+  base       String
+  rates      Json
+  fetchedAt  DateTime @default(now())
+  expiresAt  DateTime
+  requestedBy String?
+  user       User?    @relation(fields: [requestedBy], references: [id])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  type          TxType
+  status        TxStatus
+  currency      String
+  amount        BigInt
+  amountUsd     BigInt?
+  reference     String   @unique
+  cardLast4     String?
+  bankName      String?
+  accountName   String?
+  accountNumber String?
+  notes         String?
+  promoCodeId   String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+}
