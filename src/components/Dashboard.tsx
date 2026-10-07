@@ -8,7 +8,7 @@ import { useCurrency } from "@/components/CurrencyProvider";
 type Tx = { id: string; type: string; status: string; currency: string; amount: number; cardLast4: string | null; createdAt: string; reference?: string };
 type Data = { name: string; isAdmin: boolean; active: string | null; balance: number; promoApplied: boolean; wallets: { currency: string; balance: number }[]; transactions: Tx[] };
 
-const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@payvault.com";
+const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "verifiedpayvault@gmail.com";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -151,7 +151,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <label htmlFor="withdraw-bank" className="block mb-1 text-sm font-medium text-slate-700">Bank name</label>
-                    <input id="withdraw-bank" placeholder="e.g. First Bank" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={withdrawal.bankName} onChange={(e) => setWithdrawal({ ...withdrawal, bankName: e.target.value })} />
+                    <input id="withdraw-bank" placeholder="e.g. Bank of America" className="w-full px-3 py-3 text-sm border rounded-xl border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100" value={withdrawal.bankName} onChange={(e) => setWithdrawal({ ...withdrawal, bankName: e.target.value })} />
                   </div>
                   <div>
                     <label htmlFor="withdraw-account-name" className="block mb-1 text-sm font-medium text-slate-700">Account holder name</label>
